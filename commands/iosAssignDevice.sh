@@ -11,19 +11,17 @@
 source "$BAGCLI_WORKDIR/config"
 source "$BAGCLI_WORKDIR/common"
 
-#Load IIQ Functions
-source "$BAGCLI_WORKDIR/modules/incidentiq.sh"
-
 IFS=$'\n'
 
 
 CMDRAN="iOSAssignDevice"
 
 if [ "$MB_DEBUG" = "Y" ]; then
+	echo "${Orange}$CMDRAN"
 	echo "Variable 1-> $1"
 	echo "Variable 2-> $2"
 	echo "Variable 3-> $3"
-	echo "Variable 4-> $4"
+	echo "Variable 4-> $4${reset}"
 fi
 
 #Delete our file of previous scanned devices if it exists
@@ -31,33 +29,6 @@ rm -Rf /tmp/Scan2Assign.txt
 rm -Rf /tmp/Scan2Assign_Serialz.txt
 rm -Rf /tmp/Scan2Assign_ExtraInfo.txt
 
-
-
-
-
-# #Format for an iPad Data Dump of JSON
-# Generate_JSON_AssignDevice() {
-# cat <<EOF
-# 	{"accessToken": "$MOSYLE_API_key",
-# 	"elements": [ {
-#         "operation": "save",
-#     	"id": "$USERNAME_GIVEN",
-#         "name": "$FirstName $LastName",
-#         "type": "S",
-#         "email": "$USERNAME_GIVEN@gatewayk12.net",
-#         "locations": [
-#             {
-#                 "name": "$LocationName",
-#                 "grade_level": "$Grade"
-#             }
-# 			],
-#         "welcome_email": 0
-# 		}
-# 		]
-# }
-#
-# EOF
-# }
 
 #Format for an iPad Data Dump of JSON
 Generate_JSON_AssignDevice() {
@@ -79,7 +50,7 @@ AssigniPad() {
 	GetBearerToken
 		
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	APIOUTPUT=$(curl --location 'https://managerapi.mosyle.com/v2/users' \
+	APIOUTPUT=$(curl -sS --location 'https://managerapi.mosyle.com/v2/users' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_AssignDevice)")
@@ -87,12 +58,11 @@ AssigniPad() {
 	CMDStatus=$(echo "$APIOUTPUT" | cut -d ":" -f 4 | cut -d "," -f 1 | tr -d '"' | tr -d '}]})')
 
 	#DEBUGGING
-	if [ $"DEBUG" = Y ]; then
+	if [ $"MB_DEBUG" = Y ]; then
 		echo "CMD Status--> $CMDStatus"
 		echo "APIOUTPUT---> $APIOUTPUT"
 		echo "$(Generate_JSON_AssignDevice)"
 	fi
-
 	
 	if [ "$CMDStatus" = "DEVICES_NOTFOUND" ]; then
 		cli_log "Device not found in Mosyle.  Can't Assign!"
@@ -124,6 +94,19 @@ AssigniPad() {
 		fi
 	fi
 }
+
+#DEBUG CHECKS
+if [ "$MB_DEBUG" = "Y" ]; then
+	echo "${Orange}EXTERNAL MODULE SUPPORT"
+	echo "------------------"
+	echo "User lookup: $USERLOOKUP"
+	echo "Get serial: $GETSERIAL"
+	echo "Device lookup: $DEVICELOOKUP"
+	echo "Ticket lookup: $TICKETLOOKUP"
+	echo "Submit ticket: $SUBMITTICKET"
+	echo "Inventory assign: $INVENTORYASSIGN"
+	echo "Inventory unassign: $INVENTORYUNASSIGN${reset}"
+fi
 
 
 #############################
@@ -291,6 +274,8 @@ else
 		shouldwedoit="Y"
 	fi
 
+	shouldwedoit=$(echo "$shouldwedoit" | tr '[:lower:]' '[:upper:]')
+
 	if [ "$shouldwedoit" = "Y" ]; then
 		echo "DOIN IT!"
 		
@@ -318,6 +303,27 @@ else
 
 				cli_log "Assigning $TAG_GIVEN ($RETURNSERIAL) to $USERNAME_GIVEN"
 				AssigniPad
+				if [ "$INVENTORYASSIGN" = "TRUE" ]; then
+					cli_log "Assigning $TAG_GIVEN to $USERNAME_GIVEN in Snipe-IT"
+					#Needs validation checks.  Currently runs under assumption device isnt checked out
+					INVENTORYASSIGNDEVICE $TAG_GIVEN $USERNAME_GIVEN
+
+					if [ "$MB_DEBUG" = "Y" ]; then
+						echo "${Orange}$SNIPEOUTPUT${reset}"
+					fi
+
+					Snipe_Status=$(echo "$SNIPEOUTPUT" | jq -r '.status')
+					
+					if [ "$Snipe_Status" = "error" ]; then
+						SnipeError=$(echo "$SNIPEOUTPUT" | jq -r '.messages')
+						echo "${Red}Error checking device out:"
+						echo "$SnipeError${reset}"
+					else
+						cli_log "Device successfully checked out"						
+					fi 
+					
+				fi
+
 			done
 		fi
 

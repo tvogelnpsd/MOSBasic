@@ -12,10 +12,16 @@
 # This file is dedicated to functions which could be called
 # across the board through out all commands.
 
+# DEBUG FLAG #
+MB_DEBUG=Y
+
+
 #
 ################################
 #          FUNCTIONS           #
 ################################
+
+
 cli_log() {
 	LINE=$1
 	TODAY=`date '+%a %x %X'`
@@ -78,6 +84,10 @@ ParseIt_ios() {
 		exit
 	fi
 	
+	if [ "$MB_DEBUG" = "Y" ]; then
+		echo "${Orange}ParseIt_ios <- $line${reset}"
+	fi
+
 	UDID=$(echo "$line" | cut -f 1 -d$'\t')
 	DeviceSerialNumber=$(echo "$line" | cut -f 2 -d$'\t')
 	CURRENTNAME=$(echo "$line" | cut -f 3 -d$'\t')
@@ -133,7 +143,9 @@ ParseIt_group() {
 SerialFromTag() {
 	#Sanity check our data before we go any further
 	CharCountDataGiven=$(echo -n "$TAG_GIVEN" | wc -c | tr -s " ")
-	echo "Char count-> $CharCountDataGiven"
+	if [ "$MB_DEBUG" = "Y" ]; then
+		echo "Char count-> $CharCountDataGiven"
+	fi
 	#If tag given has more than 6 chars in it then it can't be right
 	if [ "$CharCountDataGiven" -lt 7 ] ; then
 		cli_log "Data given for tag ($TAG_GIVEN) appears to be an Asset tag.   Looking up."
@@ -158,7 +170,9 @@ SerialFromTag() {
 			ParseIt_ios
 		
 			RETURNSERIAL="$DeviceSerialNumber"
-			echo "DEBUG--> $RETURNSERIAL"
+			if [ "$MB_DEBUG" = "Y" ]; then
+				echo "DEBUG--> $RETURNSERIAL"
+			fi
 
 		else
 			cli_log "Attempted to find serial for tag #$TAG_GIVEN and failed."
@@ -196,7 +210,7 @@ IsThisiPadSharedMode() {
 	# output=$(curl -s -k -X POST -d $content 'https://managerapi.mosyle.com/v2/listdevices')
 
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	output=$(curl --location 'https://managerapi.mosyle.com/v2/listdevices' \
+	output=$(curl -sS --location 'https://managerapi.mosyle.com/v2/listdevices' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_IOSDUMPPostData)") >> $LOG
@@ -219,14 +233,14 @@ GetAppleUpdateData(){
 
 		#This command will dump all of the Apple page which details which version of
 		#software runs on devices.  File is ordered newest OS on top.
-		curl  -S -s "https://gdmf.apple.com/v2/pmv" | /usr/local/munki/munki-python -m json.tool > /tmp/data.json
+		curl  -S -s "https://gdmf.apple.com/v2/pmv" | $PYTHON2USE -m json.tool > /tmp/data.json
 		
 	elif [ `find "/tmp/data.json" -mmin +360 | egrep '.*'` ]; then
 		log_line "Data file is out of date.  Must grab new data."
 
 		#This command will dump all of the Apple page which details which version of
 		#software runs on devices.  File is ordered newest OS on top.
-		curl  -S -s -o 'https://gdmf.apple.com/v2/pmv' | /usr/local/munki/munki-python -m json.tool > /tmp/data.json
+		curl  -S -s "https://gdmf.apple.com/v2/pmv" | $PYTHON2USE -m json.tool > /tmp/data.json
 		
 	else
 		log_line "Data file is found and appears new enough.  Continuing."
@@ -289,8 +303,7 @@ cat <<EOF
 	"options": {
 		"os": "ios",
 		"serial_numbers": "$DeviceSerialNumber",
-		"page": "$THEPAGE",
-		"specific_columns": "date_last_beat,lostmode_status,last_ip_beat,last_lan_ip,userid"
+		"specific_columns": "date_last_beat,lostmode_status,last_ip_beat,last_lan_ip,userid,usertype,SharedCartName,device_model"
 	}
 }
 EOF
@@ -305,6 +318,10 @@ GetCurrentInfo-ios(){
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_IOSDUMPPostData)") 
 	
+	if [ "$MB_DEBUG" = "Y" ]; then
+		echo "${Orange}$output${reset}"
+	fi
+
 	if echo "$output" | grep "DEVICES_NOTFOUND"; then
 		log_line "No updated info available for $DeviceSerialNumber"
 		
@@ -313,24 +330,23 @@ GetCurrentInfo-ios(){
 			echo "$output" > "/tmp/$DeviceSerialNumber.GetCurrentInfo-ios.txt"
 		# fi
 		
-		#What parse are we using
-		if echo "$output" | grep -q "userid"; then
-			#iPad is assigned
-			MicroParse=$(echo "$output"| awk 'BEGIN{FS=",";RS="},{"}{print $0}' | perl -pe 's/.*"date_last_beat":"?(.*?)"?,"lostmode_status":"(.*?)","last_ip_beat":"?(.*?)"?,"last_lan_ip":?(.*?),"userid":"?(.*?)","usertype":"?(.*?)",*.*/\1\t\2\t\3\t\4\t\5\t\6\t\7/')			
-		else
-			#iPad not assigned.  Use this one.
-			MicroParse=$(echo "$output"| awk 'BEGIN{FS=",";RS="},{"}{print $0}' | perl -pe 's/.*"date_last_beat":"?(.*?)"?,"lostmode_status":"(.*?)","last_ip_beat":"?(.*?)"?,"last_lan_ip":"?(.*?)",*.*/\1\t\2\t\3\t\4\t\5/')
+		if [ "$MB_DEBUG" = "Y" ]; then
+			echo "${Orange}$MircoParse${reset}"
 		fi
 
-		LASTCHECKIN=$(echo "$MicroParse" |  cut -f 1 -d$'\t' )
-		LOSTMODESTATUS=$(echo "$MicroParse" |  cut -f 2 -d$'\t' )
-		LAST_IP_BEAT=$(echo "$MicroParse" |  cut -f 3 -d$'\t' )
-		LAST_LAN_IP=$(echo "$MicroParse" |  cut -f 4 -d$'\t' )
-		USERID=$(echo "$MicroParse" |  cut -f 5 -d$'\t' )
+		LASTCHECKIN=$(echo "$output" | jq -r '.response.devices[].date_last_beat')
+		LOSTMODESTATUS=$(echo "$output" | jq -r '.response.devices[].lostmode_stats')
+		LAST_IP_BEAT=$(echo "$output" | jq -r '.response.devices[].last_ip_beat')
+		LAST_LAN_IP=$(echo "$output" | jq -r '.response.devices[].last_lan_ip')
 		
-		#If device is unassigned then set the USERID to be UNASSIGNED
-		if [ ! -n "$USERID" ]; then
-			USERID="UNASSIGNED"
+		if [ "$ENROLLMENT_TYPE" = "1:1" ]; then
+			USERID=$(echo "$output" | jq -r '.response.devices[].userid')
+			#If device is unassigned then set the USERID to be UNASSIGNED
+			if [ ! -n "$USERID" ]; then
+				USERID="UNASSIGNED"
+			fi
+		elif [ "$ENROLLMENT_TYPE" = "SHARED" ]; then
+			NAME=$(echo "$output" | jq -r '.response.devices[].SharedCartName')
 		fi
 		
 		if [ "$LASTCHECKIN" = "null" ]; then
@@ -432,9 +448,9 @@ GetBearerToken() {
 	
 	if [[ -e "/tmp/.MosyleAPI_BearToken" ]]; then
 		FilesAge=$(( $(date +%s) - $(date -r /tmp/.MosyleAPI_BearToken +%s) ))
-		echo "Files Age-> ($FilesAge)"
-		if [[ ${FilesAge} -lt 3600 ]]; then
-			cli_log "Recently grabbed Bearer Token is less than an hour old (${FilesAge} seconds.)  Reusing."
+		#echo "Files Age-> ($FilesAge)"
+		if [[ ${FilesAge} -lt 43200 ]]; then
+			cli_log "Recently grabbed Bearer Token is less than 12 hours old (${FilesAge} seconds.)  Reusing."
 			AuthToken=$(cat "/tmp/.MosyleAPI_BearToken")
 			
 		else
@@ -544,7 +560,7 @@ SetDeviceName() {
 
 	#DEBUGGING
 	if [ "$MB_DEBUG" = "Y" ]; then
-		echo "$TAG_GIVEN  / $DeviceSerialNumber  /  $NewDeviceName"
+		echo "${Orange}$TAG_GIVEN  / $DeviceSerialNumber  /  $NewDeviceName${reset}"
 	fi
 		
 
@@ -592,6 +608,14 @@ POSTPROCESSING-SCRIPTS() {
 	
 	fi
 }
+
+#Findout out our max page setting.  If blank then set to default.
+if [ -z "$MAXPAGECOUNT" ]; then
+	MAXPAGECOUNT=666
+	cli_log "Max Page Count is set to $MAXPAGECOUNT"
+else
+	cli_log "Max Page Count is set to $MAXPAGECOUNT"
+fi
 
 #ColorCodes
 
