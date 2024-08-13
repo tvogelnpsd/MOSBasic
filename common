@@ -12,10 +12,6 @@
 # This file is dedicated to functions which could be called
 # across the board through out all commands.
 
-# DEBUG FLAG #
-MB_DEBUG=Y
-
-
 #
 ################################
 #          FUNCTIONS           #
