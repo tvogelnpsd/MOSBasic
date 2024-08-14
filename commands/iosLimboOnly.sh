@@ -83,7 +83,7 @@ SerialFromTag
 
 if [ "$RETURNSERIAL" = "EPICFAIL" ]; then
 	echo "${Red}Cant find $1 in cached Mosyle data.  EPIC FAIL${reset}"
-	log_line "TAG_GIVEN-> Cant find in MosyleData.  Epic Fail."
+	cli_log "$TAG_GIVEN-> Cant find in MosyleData.  Epic Fail."
 	exit 1
 
 else
