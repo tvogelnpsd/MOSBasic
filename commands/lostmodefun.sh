@@ -66,7 +66,7 @@ EnableLostMode() {
 	cli_log "Operation $OPERATION2PERFORM called upon to act on $DEVICES2BULKON"
 	
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	APIOUTPUT=$(curl --location 'https://managerapi.mosyle.com/v2/lostmode' \
+	APIOUTPUT=$(curl -sS --location 'https://managerapi.mosyle.com/v2/lostmode' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_LostModeOperations)" 2> /dev/null) 
@@ -90,7 +90,7 @@ PlayLostSound() {
 	cli_log "Operation $OPERATION2PERFORM called upon to act on $DEVICES2BULKON"
 		
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	APIOUTPUT=$(curl --location 'https://managerapi.mosyle.com/v2/lostmode' \
+	APIOUTPUT=$(curl -sS --location 'https://managerapi.mosyle.com/v2/lostmode' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_LostModeOperations)") 
@@ -125,7 +125,7 @@ DisableLostMode(){
 	
 	cli_log "Operation $OPERATION2PERFORM called upon to act on $DEVICES2BULKON"
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	APIOUTPUT=$(curl --location 'https://managerapi.mosyle.com/v2/lostmode' \
+	APIOUTPUT=$(curl -sS --location 'https://managerapi.mosyle.com/v2/lostmode' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_LostModeOperations)")	
@@ -149,7 +149,7 @@ LocateDevice() {
 	cli_log "Operation $OPERATION2PERFORM called upon to act on $DEVICES2BULKON"
 	
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	APIOUTPUT=$(curl --location 'https://managerapi.mosyle.com/v2/lostmode' \
+	APIOUTPUT=$(curl -sS --location 'https://managerapi.mosyle.com/v2/lostmode' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_LostModeOperations)")
@@ -191,7 +191,7 @@ CheckLostMode() {
 	#
 	# APIOUTPUT=$(curl -s -k -X POST -d $content 'https://managerapi.mosyle.com/v2/listdevices')
 
-	APIOUTPUT=$(curl --location 'https://managerapi.mosyle.com/v2/listdevices' \
+	APIOUTPUT=$(curl -sS --location 'https://managerapi.mosyle.com/v2/listdevices' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_LostmodeCheck)")
@@ -318,7 +318,7 @@ WHOISLOST() {
 
 
 		#This is a new CURL call with JSON data - JCS 11/8/23
-		APIOUTPUT=$(curl --location 'https://managerapi.mosyle.com/v2/listdevices' \
+		APIOUTPUT=$(curl -sS --location 'https://managerapi.mosyle.com/v2/listdevices' \
 			--header 'content-type: application/json' \
 			--header "Authorization: Bearer $AuthToken" \
 			--data "$(Generate_JSON_IOSDUMPPostData)") >> $LOG
