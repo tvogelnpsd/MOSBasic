@@ -149,8 +149,11 @@ SerialFromTag() {
 	
 		#Search through our known serials
 		SERIALIS=$(cat "$TEMPOUTPUTFILE_MERGEDIOS" | cut -d$'\t' -f 2-5,7-9 | grep "$TAG_GIVEN" | cut -d$'\t' -f 1 )
-		SERIALIS=$(cat "$TEMPOUTPUTFILE_MERGEDIOS" | grep "$SERIALIS")
-	
+
+		if [ -n "$SERIALIS" ]; then
+			SERIALIS=$(cat "$TEMPOUTPUTFILE_MERGEDIOS" | grep "$SERIALIS")
+		fi
+
 		HowManyReturns=$(echo "$SERIALIS" | wc -l)
 		HowManyReturns="${HowManyReturns//[[:space:]]/}"
 	
