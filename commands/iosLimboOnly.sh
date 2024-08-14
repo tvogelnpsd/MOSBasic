@@ -86,6 +86,11 @@ if [ "$RETURNSERIAL" = "EPICFAIL" ]; then
 	cli_log "$TAG_GIVEN-> Cant find in MosyleData.  Epic Fail."
 	exit 1
 
+elif [ "$RETURNSERIAL" = "TOOMANYSERIALS" ]; then
+	echo "${Red}Too many results returned for $1.  EPIC FAIL${reset}"
+	cli_log "$TAG_GIVEN-> Too many results.  Epic Fail."
+	exit 1
+
 else
 	echo "Asset tag $TAG_GIVEN is $RETURNSERIAL."	
 	
