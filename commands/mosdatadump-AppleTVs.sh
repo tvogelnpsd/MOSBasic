@@ -90,7 +90,7 @@ while true; do
 	cli_log "iOS CLIENTS-> Asking MDM for Page $THEPAGE data...."
 
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	curl --location 'https://managerapi.mosyle.com/v2/listdevices' \
+	curl  -sS --location 'https://managerapi.mosyle.com/v2/listdevices' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_IOSDUMPPostData)" -o /tmp/MOSBasicRAW-tvOS-Page$THEPAGE.txt 2> /dev/null

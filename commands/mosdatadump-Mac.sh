@@ -79,7 +79,7 @@ while true; do
 	##This has been changed from running inside a variable to file output because there are some characers which mess the old
 	#way up.  By downloading straight to file we avoid all that nonsense. -JCS 5/23/2022
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	curl --location 'https://managerapi.mosyle.com/v2/listdevices' \
+	curl -sS --location 'https://managerapi.mosyle.com/v2/listdevices' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_MacOSDUMPPostData)" -o /tmp/MOSBasicRAW-Mac-Page$THEPAGE.txt

@@ -67,7 +67,7 @@ while true; do
 	cli_log "MOSYLE USERS-> Asking MDM for Page $THEPAGE data...."
 
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	curl --location 'https://managerapi.mosyle.com/v2/listusers' \
+	curl -sS --location 'https://managerapi.mosyle.com/v2/listusers' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
 		--data "$(Generate_JSON_UserDUMPPostData)" -o /tmp/MOSBasicRAW-Users-Page$THEPAGE.txt
