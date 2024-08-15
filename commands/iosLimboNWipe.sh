@@ -144,7 +144,7 @@ CalliPadWipeRoutine() {
 	if [ "$RTS_ENABLED" = Y ]; then
 		echo "Making it So #1 - UTILIZING RTS."
 		#This is a new CURL call with JSON data - JCS 11/8/23
-		curl --location 'https://managerapi.mosyle.com/v2/bulkops' \
+		curl -sS --location 'https://managerapi.mosyle.com/v2/bulkops' \
 		--header 'Content-Type: application/json' \
 			--header "Authorization: Bearer $AuthToken" \
 			--data "$(Generate_JSON_BulkOperations_ALT)"
@@ -161,7 +161,7 @@ CalliPadWipeRoutine() {
 	else
 		echo "Making it So #1 - Not Utilizing RTS."
 		#This is a new CURL call with JSON data - JCS 11/8/23
-		curl --location 'https://managerapi.mosyle.com/v2/bulkops' \
+		curl -sS --location 'https://managerapi.mosyle.com/v2/bulkops' \
 		--header 'Content-Type: application/json' \
 			--header "Authorization: Bearer $AuthToken" \
 			--data "$(Generate_JSON_BulkOperations_ALTNoRTS)"
@@ -183,6 +183,7 @@ CalliPadWipeRoutine() {
 #          Do Work          #
 #############################
 #Check to see if we should use Return to Service Mode
+
 if [ -z "$RTS_ENABLED" ]; then
 	echo " "
 	echo "ATTENTION!!!!!"
@@ -360,11 +361,6 @@ if [ -z "$shouldwedoit" ]; then
 	read shouldwedoit
 fi
 
-#Has confirmation been given?  Get it
-if [ -z "$shouldwedoit" ]; then
-	echo "Are you sure <Y/N>"
-	read shouldwedoit
-fi
 
 if [ "$shouldwedoit" = "Y" ] || [ "$shouldwedoit" = "y" ]; then
 	
@@ -381,7 +377,7 @@ if [ "$shouldwedoit" = "Y" ] || [ "$shouldwedoit" = "y" ]; then
 		
 		cli_log "Sending back command clear to $DEVICES2BULKON"
 		#This is a new CURL call with JSON data - JCS 11/8/23
-		curl --location 'https://managerapi.mosyle.com/v2/bulkops' \
+		curl -sS --location 'https://managerapi.mosyle.com/v2/bulkops' \
 		--header 'Content-Type: application/json' \
 			--header "Authorization: Bearer $AuthToken" \
 			--data "$(Generate_JSON_BulkOperations)"
@@ -392,7 +388,7 @@ if [ "$shouldwedoit" = "Y" ] || [ "$shouldwedoit" = "y" ]; then
 		#This is a new CURL call with JSON data - JCS 11/8/23
 		OPERATION2PERFORM="change_to_limbo"
 		DEVICES2BULKON="$LIMBOSetUDiDs"
-		curl --location 'https://managerapi.mosyle.com/v2/bulkops' \
+		curl -sS --location 'https://managerapi.mosyle.com/v2/bulkops' \
 		--header 'Content-Type: application/json' \
 			--header "Authorization: Bearer $AuthToken" \
 			--data "$(Generate_JSON_BulkOperations)"
