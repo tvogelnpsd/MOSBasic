@@ -275,55 +275,6 @@ GetAppleUpdateData(){
 	fi
 }
 
-CheckBuildVersion() {
-	#This chunk of code is all new.  Back in April 22' an AppleSE inquired about how do I know a device needs
-	#updated or note.  Originally I had a manual table listed of build numbers.  This table had to be updated
-	#every time a new version comes out though.  Instead now we ask Apple for a list of all device types and
-	#what version of iPadOS they should have.  Ask the iPad what firmware it has, compare, and act.  
-	
-	#Make sure we have a data file from Apple about currently available iOS/iPadOS versions.
-	#NOTE-> This function comes from MOSBasic/Common
-	GetAppleUpdateData
-	
-	#User CFGUTIL to figure out the Model (by deviceType ID) and current
-	#version of iPadOS running.
-	deviceType=$(bash -c "/usr/local/bin/cfgutil --ecid "$ECID" get deviceType" 2</dev/null)
-	firmwareVersion=$(bash -c "/usr/local/bin/cfgutil --ecid "$ECID" get firmwareVersion" 2</dev/null)
-
-	if [ "$DEBUG" = "Y" ]; then
-		echo "We are looking at a device with type ($deviceType) running firmware version ($firmwareVersion)"
-	fi
-
-	#Cat the fie of Apple update data.  Use AWK to print out everything until we hit the device we
-	#have.  Now AWK again to find out waht the latest version attributed is.  Use cut to get us down to just
-	#a variable.
-	AwkWithDeviceVariable=$(echo "{print} /$deviceType/ {exit}")
-	GetOSVersion=$(cat /tmp/data.json | awk "$AwkWithDeviceVariable" | grep ProductVersion | tail -1 | cut -d ':' -f 2 | cut -d '"' -f 2)
-
-	#Test data we got back.
-	if [ -z "$GetOSVersion" ]; then
-		echo "Lookup of supported iOS/iPadOS didn't work.  Cant check update status."
-	elif [ "$DEBUG" = "Y" ]; then
-		echo "Apple updates site says $deviceType should be running $GetOSVersion"
-	fi
-
-	autoload is-at-least
-
-	#If versions match we can mobe on
-	if [ "$firmwareVersion" = "$GetOSVersion" ]; then
-		echo "iPad is running latest available ($firmwareVersion.)  No update necessary."
-		WIPEIT="FALSE"
-
-	elif is-at-least "$firmwareVersion" "$GetOSVersion"; then
-		echo "This iPad needs updated. OS installed ($firmwareVersion) is older then what is should be ($GetOSVersion)"
-		WIPEIT="TRUE"
-		
-	else
-		echo "Couldn't get a lock on what we should do ($firmwareVersion/$GetOSVersion) so no update will be called for."
-		WIPEIT="FALSE"
-	fi
-}
-
 #Format for an iPad Data Dump of JSON
 Generate_JSON_IOSDUMPPostData() {
 cat <<EOF
@@ -362,7 +313,7 @@ GetCurrentInfo-ios(){
 			echo "${Orange}$MircoParse${reset}"
 		fi
 
-		LASTCHECKIN=$(echo "$output" | jq -r '.response.devices[].date_last_beat')
+		LASTCHECKIN_RAW=$(echo "$output" | jq -r '.response.devices[].date_last_beat')
 		LOSTMODESTATUS=$(echo "$output" | jq -r '.response.devices[].lostmode_stats')
 		LAST_IP_BEAT=$(echo "$output" | jq -r '.response.devices[].last_ip_beat')
 		LAST_LAN_IP=$(echo "$output" | jq -r '.response.devices[].last_lan_ip')
@@ -377,11 +328,11 @@ GetCurrentInfo-ios(){
 			NAME=$(echo "$output" | jq -r '.response.devices[].SharedCartName')
 		fi
 		
-		if [ "$LASTCHECKIN" = "null" ]; then
+		if [ "$LASTCHECKIN_RAW" = "null" ]; then
 			LASTCHECKIN="NO-DATA"
 		else
 			#Take Epoch time and convert to hours
-			LASTCHECKIN=$($PYTHON2USE -c "import datetime; print(datetime.datetime.fromtimestamp(int("$LASTCHECKIN")).strftime('%Y-%m-%d %I:%M:%S %p'))")
+			LASTCHECKIN=$($PYTHON2USE -c "import datetime; print(datetime.datetime.fromtimestamp(int("$LASTCHECKIN_RAW")).strftime('%Y-%m-%d %I:%M:%S %p'))")
 		fi
 	fi
 
