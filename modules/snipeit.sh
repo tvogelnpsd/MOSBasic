@@ -125,8 +125,26 @@ EOF
 	SNIPEOUTPUT=$(curl -s -H "$Auth" "$baseurl/hardware/$DEVICE_ID/checkout" -H "accept: application/json" -H "content-type: application/json" --data "$(Generate_JSON_SnipeAssign)")
 }
 
-INVENTORYUNASSIGN=FALSE
+INVENTORYUNASSIGN=TRUE
 INVENTORYUNASSIGNDEVICE() {
-	echo "Sorry this feature is not ready yet!"
-	exit 1
+	#Assumues asset tag and username given
+	Tag2Unassign="$1"
+	Auth=$(echo "Authorization: Bearer $apitoken")
+	TagQuery=$(curl -s -H "$Auth" "$baseurl/hardware/bytag/$Tag2Unassign")
+
+	DEVICE_ID=$(echo "$TagQuery" | jq -r '.id')
+
+	Generate_JSON_SnipeUnassign(){
+		cat <<EOF
+	{"status_id": 2}
+EOF
+	}
+
+	if [ "$MB_DEBUG" = "Y" ]; then
+		echo "${Orange}Snipe Device ID: $DEVICE_ID"
+		echo "Snipe Data JSON:"
+		echo "$(Generate_JSON_SnipeUnassign)${reset}"
+	fi
+
+	SNIPEOUTPUT=$(curl -s -H "$Auth" "$baseurl/hardware/$DEVICE_ID/checkin" -H "accept: application/json" -H "content-type: application/json" --data "$(Generate_JSON_SnipeUnassign)")
 }
