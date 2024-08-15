@@ -131,7 +131,7 @@ if [ "$shouldwedoit" = "Y" ] || [ "$shouldwedoit" = "y" ]; then
 			DEVICES2BULKON="$LIMBOSetUDiDs"
 			
 			#This is a new CURL call with JSON data - JCS 11/8/23
-			curl --location 'https://managerapi.mosyle.com/v2/bulkops' \
+			curl -sS --location 'https://managerapi.mosyle.com/v2/bulkops' \
 			--header 'Content-Type: application/json' \
 				--header "Authorization: Bearer $AuthToken" \
 				--data "$(Generate_JSON_BulkOperations)"			
@@ -142,7 +142,7 @@ if [ "$shouldwedoit" = "Y" ] || [ "$shouldwedoit" = "y" ]; then
 			OPERATION2PERFORM="change_to_limbo"
 			DEVICES2BULKON="$LIMBOSetUDiDs"
 			#This is a new CURL call with JSON data - JCS 11/8/23
-			curl --location 'https://managerapi.mosyle.com/v2/bulkops' \
+			curl -sS --location 'https://managerapi.mosyle.com/v2/bulkops' \
 			--header 'Content-Type: application/json' \
 				--header "Authorization: Bearer $AuthToken" \
 				--data "$(Generate_JSON_BulkOperations)"
