@@ -129,9 +129,9 @@ RestoreDevice() {
 		    exit 1
 		fi
 		
-	elif  [ "$Devicebootstate" = "DFU" ] || [ "$Devicebootstate" = "Restore" ]; then
-		HayLookAtMe "iPad is in DFU/Restore Mode...."
-		log_line "RESTORE: $ECID / ($UDID) device in DFU/Restore mode.  Jumping right to restore attempt."
+	elif  [ "$Devicebootstate" = "DFU" ] || [ "$Devicebootstate" = "Recovery" ]; then
+		HayLookAtMe "iPad is in DFU/Recovery Mode...."
+		log_line "RESTORE: $ECID / ($UDID) device in DFU/Recovery mode.  Jumping right to restore attempt."
 		FullPressWipe=$(cfgutil --ecid "$ECID" restore  2>/dev/null )
 
 		if [ "$?" = "1" ]; then
@@ -616,7 +616,10 @@ HayLookAtMe "Initial iPad Status Check"
 
 log_line "IPAD STATUS: Checking iPad current Status $ECID"
 
+
+
 if [ "$Devicebootstate" = "Booted" ]; then
+	HayLookAtMe "$Refer2MeAs is $Devicebootstate"
     if [ "$Devicepairingstate" = "yes" ]; then
     	#Do a Quick Check on the iPad we just got..  If its unactivated we don't need to 
     	#wipe it..  Otherwise always wipe.
