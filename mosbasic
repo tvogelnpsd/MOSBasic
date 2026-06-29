@@ -181,6 +181,29 @@ if [ ! -s "$LOCALCONF/.MosyleAPI" ]; then
 	else
 		echo "MOSYLE_API_key=\"$MosyleAPIKeyProvided\"" > "$LOCALCONF/.MosyleAPI"
 	fi
+
+	echo "Mosyle username:"
+	read MosyleUsernameProvided
+
+	if [ -z "$MosyleUsernameProvided" ]; then
+		echo "No user Provided.  Epic Fail."
+		exit 1
+
+	else
+		echo "MOSYLE_API_Username=\"$MosyleUsernameProvided\"" > "$LOCALCONF/.MosyleAPI"
+	fi
+
+	echo "Mosyle password:"
+	read MosylePasswordProvided
+
+	if [ -z "$MosylePasswordProvided" ]; then
+		echo "No password Provided.  Epic Fail."
+		exit 1
+
+	else
+		echo "MOSYLE_API_Password=\"$MosylePasswordProvided\"" > "$LOCALCONF/.MosyleAPI"
+	fi
+
 fi
 
 #Check for outside module support
@@ -205,6 +228,8 @@ if [ "$GotModules" = "iiq" ]; then
 
 elif [ "$GotModules" = "other" ]; then
 	echo "This feature is not supported, YET.  Setting to none.."
+elif [ "$GotModules" = "none" ]; then
+	echo "No modules configured"
 else
 	echo "Whatever you have in "$LOCALCONF"/MOSBasic/.modules ($GotModules) I don't know what that is."
 	echo "Epic Fail"
