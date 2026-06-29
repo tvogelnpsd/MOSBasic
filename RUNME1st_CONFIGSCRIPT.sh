@@ -1,16 +1,25 @@
 #!/bin/zsh
 
 #Make sure /usr/loca/bin exists.
-if [ ! -h "/usr/local/bin" ]; then
+if [ ! -d "/usr/local/bin" ]; then
 	echo "/usr/local/bin doesnt exist.  Creating..."
-	mkdir /usr/local/bin
+	if [ ! -w "usr/local/" ]; then
+		echo "Need sudo privileges to create /usr/local/bin"
+		sudo mkdir /usr/local/bin
+	else
+		mkdir /usr/local/bin
+	fi
 fi
 
 if [ ! -h "/usr/local/bin/mosbasic" ]; then
 	BAGCLI_WORKDIR=$(cd $(dirname $0) && pwd)
 	echo "Setting up linkage from $BAGCLI_WORKDIR/mosbasic to /usr/local/bin/mosbasic"
-	ln -s $BAGCLI_WORKDIR/mosbasic /usr/local/bin/mosbasic
-
+	if [ ! -w "usr/local/bin/" ]; then
+		echo "Need sudo privileges to create symbolic link /usr/local/bin/mosbasic"
+		sudo ln -s $BAGCLI_WORKDIR/mosbasic /usr/local/bin/mosbasic
+	else
+		ln -s $BAGCLI_WORKDIR/mosbasic /usr/local/bin/mosbasic
+	fi
 else
 	BAGCLI_WORKDIR=$(readlink /usr/local/bin/mosbasic)
 	#Remove our command name from the output above
@@ -56,20 +65,20 @@ if [ ! -f "$BAGCLI_WORKDIR/config" ] ; then
 	echo " "  >> $BAGCLI_WORKDIR/config
 
 
-	if [ -x "/usr/local/munki/munki-python" ]; then
-		echo "Found Munki installed python.  Linking to it."
+	if [ -x "/usr/bin/python3" ]; then
+		echo "Found python.  Linking to it."
 		echo "#Python version since as of 12.2.1 we no longer have python to lean on by default install" >> $BAGCLI_WORKDIR/config
-		echo "PYTHON2USE=/usr/local/munki/munki-python" >> $BAGCLI_WORKDIR/config
+		echo "PYTHON2USE=/usr/bin/python3" >> $BAGCLI_WORKDIR/config
 	else
-		echo "Could not find Munki installed python.  As of MacOS 12.3 built in python binaries"
+		echo "Could not find installed python.  As of MacOS 12.3 built in python binaries"
 		echo "no longer exist.  You must install your own python interpreter.  We auto detect"
-		echo "if Munki's python is installed.  I don't look for anything else right now.  Please"
+		echo "if python is installed to /usr/bin/python3.  I don't look for anything else right now.  Please"
 		echo "edit the $BAGCLI_WORKDIR/config file.  Look for the line PYTHON2USE= and list your"
 		echo "python of choice."
 		
-		echo "#Could not find Munki installed python.  As of MacOS 12.3 built in python binaries" >> $BAGCLI_WORKDIR/config
+		echo "#Could not find installed python.  As of MacOS 12.3 built in python binaries" >> $BAGCLI_WORKDIR/config
 		echo "#no longer exist.  You must install your own python interpreter.  We auto detect" >> $BAGCLI_WORKDIR/config
-		echo "#if Munki's python is installed.  I don't look for anything else right now.  Please" >> $BAGCLI_WORKDIR/config
+		echo "#if python is installed to /usr/bin/python3.  I don't look for anything else right now.  Please" >> $BAGCLI_WORKDIR/config
 		echo "#edit the $BAGCLI_WORKDIR/config file.  Look for the line PYTHON2USE= and list your" >> $BAGCLI_WORKDIR/config
 		echo "#python of choice." >> $BAGCLI_WORKDIR/config
 		
@@ -83,7 +92,7 @@ if [ ! -f "$BAGCLI_WORKDIR/config" ] ; then
 	source "$BAGCLI_WORKDIR/config"
 	
 	#Make sure our personal MOSBasic folder exists...
-	if [ -f "$LOCALCONF/MOSBasic/" ]; then
+	if [ -d "$LOCALCONF/MOSBasic/" ]; then
 		echo "Local MOSBasic folder found.  Not touching.."
 	else
 		echo "Creating Local MOSBasic folder..."
