@@ -36,17 +36,6 @@ cat <<EOF
 	"options": {
 		"os": "ios",
 		"page": "$THEPAGE",
-              "specific_columns": [
-                "deviceudid",
-                "serial_number",
-                "device_name",
-                "tags",
-                "asset_tag",
-                "userid",
-                "enrollment_type",
-                "username",
-                "date_app_info"
-                ],
 		"page_size": "$NumberOfReturnsPerPage"
 	}
 }
@@ -64,6 +53,7 @@ rm -Rf "$TEMPOUTPUTFILE_Limbo"
 rm -Rf "$TEMPOUTPUTFILE_Shared"
 #rm -Rf "$TEMPOUTPUTFILE_MERGEDIOS"
 cp "$TEMPOUTPUTFILE_MERGEDIOS" /tmp/Current-$DATECODEFORFILE.MosyleiOSDump.txt
+cp "$TEMPOUTPUTFILE_MERGEDIOS_JSON" /tmp/Current-$DATECODEFORFILE.MosyleiOSDump.json
 
 #Initialize the base count variable. This will be
 #used to figure out what page we are on and where
@@ -89,15 +79,15 @@ while true; do
 	cli_log "iOS CLIENTS-> Asking MDM for Page $THEPAGE data...."
 
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	curl --location 'https://managerapi.mosyle.com/v2/listdevices' \
+	curl -Ss --location 'https://managerapi.mosyle.com/v2/listdevices' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
-		--data "$(Generate_JSON_IOSDUMPPostData)" -o /tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt 2> /dev/null
+		--data "$(Generate_JSON_IOSDUMPPostData)" -o /tmp/MOSBasicRAW-iOS-Page$THEPAGE.json 2> /dev/null
 
 
 
 	#Detect we just loaded a page with no content and stop.
-	LASTPAGE=$(cat "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt" | grep DEVICES_NOTFOUND)
+	LASTPAGE=$(cat "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.json" | grep DEVICES_NOTFOUND)
 	if [ -n "$LASTPAGE" ]; then
 		let "THECOUNT=$THECOUNT-1"
 		cli_log "iOS CLIENTS-> Yo we are at the end of the list (Last good page was $THECOUNT)"
@@ -105,7 +95,7 @@ while true; do
 	fi
 
 	#Make sure file has content
-	if [ ! -s "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt" ]; then
+	if [ ! -s "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.json" ]; then
 	#if [[ ! -z $(cat "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt") ]] ; then	
 		cli_log "Page $THEPAGE reqested from Mosyle but had no data.  Skipping."
 		let "DataRequestFailedCount=$DataRequestFailedCount+1"
@@ -113,7 +103,7 @@ while true; do
 	fi
 
 	#TokenFailures
-	LASTPAGE=$(cat "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt" | grep 'accessToken Required')
+	LASTPAGE=$(cat "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.json" | grep 'accessToken Required')
 	if [ -n "$LASTPAGE" ]; then
 		let "THECOUNT=$THECOUNT-1"
 		cli_log "iOS CLIENTS-> AccessToken error..."
@@ -122,11 +112,11 @@ while true; do
 	
 	#Are we on more pages then our max (IE something wrong)
 	if [ "$THECOUNT" -gt "$MAXPAGECOUNT" ]; then 
-		cli_log "MAC CLIENTS-> We have hit $THECOUNT pages...  Greater then our max.  Something is wrong."
+		cli_log "iOS CLIENTS-> We have hit $THECOUNT pages...  Greater then our max.  Something is wrong."
 		break
 	fi
 
-	LASTPAGE=$(cat "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt" | grep 'Unauthorized')
+	LASTPAGE=$(cat "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.json" | grep 'Unauthorized')
 	if [ -n "$LASTPAGE" ]; then
 		cli_log "iOS CLIENTS-> Authorization error pulling page #$THEPAGE"
 
@@ -134,12 +124,12 @@ while true; do
 		cli_log "iOS ClIENTS-> Processing page #$THEPAGE"
 		#Preprocess the file.  We need to remove {"status":"OK","response": so can do operations with our python json to csv converter.  Yes
 		#I know this is still janky but hay I'm getting there.
-		cat /tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt  | cut -d ':' -f 3- | sed 's/.$//' > /tmp/MOSBasicRAW-iOS-TEMPSPOT.txt
-		mv -f /tmp/MOSBasicRAW-iOS-TEMPSPOT.txt /tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt
+		cat /tmp/MOSBasicRAW-iOS-Page$THEPAGE.json  | jq -r '.response.devices[] | [.deviceudid,.serial_number,.device_name,.tags,.asset_tag,.userid,.enrollment_type,.username,.date_app_info] | @tsv' >> /tmp/DUMPINPROGRESS-$DATECODEFORFILE.MosyleiOSDump.txt
+		cat /tmp/MOSBasicRAW-iOS-Page$THEPAGE.json | jq -c '.response.devices[]' >> /tmp/DUMPINPROGRESS-$DATECODEFORFILE.MosyleiOSDump.json
 
 		#Call our python json to csv routine.  Output will be tab delimited so we can maintain our "tags" together.
 		#$PYTHON2USE $BAGCLI_WORKDIR/modules/json2csv.py devices /tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt "$TEMPOUTPUTFILE_MERGEDIOS"
-		$PYTHON2USE $BAGCLI_WORKDIR/modules/json2csv.py devices /tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt /tmp/DUMPINPROGRESS-$DATECODEFORFILE.MosyleiOSDump.txt	
+		#$PYTHON2USE $BAGCLI_WORKDIR/modules/json2csv.py devices /tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt /tmp/DUMPINPROGRESS-$DATECODEFORFILE.MosyleiOSDump.txt	
 	fi
 done
 
@@ -148,8 +138,10 @@ done
 ####sort of test before swapping out the data file.
 #Delete Existing file
 rm -Rf "$TEMPOUTPUTFILE_MERGEDIOS"
+rm -Rf "$TEMPOUTPUTFILE_MERGEDIOS_JSON"
 #Move newly generated file into place.
 mv /tmp/DUMPINPROGRESS-$DATECODEFORFILE.MosyleiOSDump.txt "$TEMPOUTPUTFILE_MERGEDIOS"
+mv /tmp/DUMPINPROGRESS-$DATECODEFORFILE.MosyleiOSDump.json "$TEMPOUTPUTFILE_MERGEDIOS_JSON"
 
 # # #Build file of all this data now that we've sorted it out and parsed it.
 # # #we still need the single/individual files for legacy support of other
@@ -174,6 +166,7 @@ fi
 if [ ! "$MB_DEBUG" = "Y" ]; then
 	#Unless we are debugging then we need to cleanup after ourselves
 	rm -f /tmp/MOSBasicRAW-iOS-*.txt
+	rm -f /tmp/MOSBasicRAW-iOS-*.json
 else
 	cli_log "iOS CLIENTS-> DEBUG IS ENABLED.  NOT CLEANING UP REMAINING FILES!!!!"
 fi

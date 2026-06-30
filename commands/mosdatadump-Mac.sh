@@ -35,17 +35,6 @@ cat <<EOF
   "options": {
     "os": "mac",
     "page": "$THEPAGE",
-    "specific_columns": [
-      "deviceudid",
-      "serial_number",
-      "device_name",
-      "tags",
-      "asset_tag",
-      "userid",
-      "enrollment_type",
-      "username",
-      "date_app_info"
-    ],
     "page_size": "$NumberOfReturnsPerPage"
   }
 }
@@ -62,6 +51,7 @@ rm -Rf "$TEMPOUTPUTFILE_MACTeachers"
 rm -Rf "$TEMPOUTPUTFILE_MACLimbo"
 rm -Rf "$TEMPOUTPUTFILE_MACShared"
 rm -Rf "$TEMPOUTPUTFILE_MERGEDMAC"
+rm -Rf "$TEMPOUTPUTFILE_MERGEDMAC_JSON"
 
 #Initialize the base count variable. This will be
 #used to figure out what page we are on and where
@@ -91,14 +81,14 @@ while true; do
 	##This has been changed from running inside a variable to file output because there are some characers which mess the old
 	#way up.  By downloading straight to file we avoid all that nonsense. -JCS 5/23/2022
 	#This is a new CURL call with JSON data - JCS 11/8/23
-	curl --location 'https://managerapi.mosyle.com/v2/listdevices' \
+	curl -Ss --location 'https://managerapi.mosyle.com/v2/listdevices' \
 		--header 'content-type: application/json' \
 		--header "Authorization: Bearer $AuthToken" \
-		--data "$(Generate_JSON_MacOSDUMPPostData)" -o /tmp/MOSBasicRAW-Mac-Page$THEPAGE.txt
+		--data "$(Generate_JSON_MacOSDUMPPostData)" -o /tmp/MOSBasicRAW-Mac-Page$THEPAGE.json
 
 
 	#Detect we just loaded a page with no content and stop.
-	LASTPAGE=$(cat "/tmp/MOSBasicRAW-Mac-Page$THEPAGE.txt" | grep DEVICES_NOTFOUND)
+	LASTPAGE=$(cat "/tmp/MOSBasicRAW-Mac-Page$THEPAGE.json" | grep DEVICES_NOTFOUND)
 	if [ -n "$LASTPAGE" ]; then
 		let "THECOUNT=$THECOUNT-1"
 		cli_log "MAC CLIENTS-> Yo we are at the end of the list (Last good page was $THECOUNT)"
@@ -106,7 +96,7 @@ while true; do
 	fi
 	
 	#Make sure file has content
-	if [ ! -s "/tmp/MOSBasicRAW-Mac-Page$THEPAGE.txt" ]; then
+	if [ ! -s "/tmp/MOSBasicRAW-Mac-Page$THEPAGE.json" ]; then
 	#if [[ ! -z $(cat "/tmp/MOSBasicRAW-iOS-Page$THEPAGE.txt") ]] ; then	
 		cli_log "Page $THEPAGE reqested from Mosyle but had no data.  Skipping."
 		let "DataRequestFailedCount=$DataRequestFailedCount+1"
@@ -114,7 +104,7 @@ while true; do
 	fi
 	
 	#TokenFailures
-	LASTPAGE=$(cat "/tmp/MOSBasicRAW-Mac-Page$THEPAGE.txt" | grep 'accessToken Required')
+	LASTPAGE=$(cat "/tmp/MOSBasicRAW-Mac-Page$THEPAGE.json" | grep 'accessToken Required')
 	if [ -n "$LASTPAGE" ]; then
 		let "THECOUNT=$THECOUNT-1"
 		cli_log "MAC CLIENTS-> AccessToken error..."
@@ -129,11 +119,12 @@ while true; do
 
 	#Preprocess the file.  We need to remove {"status":"OK","response": so can do operations with our python json to csv converter.  Yes
 	#I know this is still janky but hay I'm getting there.
-	cat /tmp/MOSBasicRAW-Mac-Page$THEPAGE.txt  | cut -d ':' -f 3- | sed 's/.$//' > /tmp/MOSBasicRAW-Mac-TEMPSPOT.txt
-	mv -f /tmp/MOSBasicRAW-Mac-TEMPSPOT.txt /tmp/MOSBasicRAW-Mac-Page$THEPAGE.txt
+	
+	cat /tmp/MOSBasicRAW-Mac-Page$THEPAGE.json  | jq -r '.response.devices[] | [.deviceudid,.serial_number,.device_name,.tags,.asset_tag,.userid,.enrollment_type,.username,.date_app_info] | @tsv' >> "$TEMPOUTPUTFILE_MERGEDMAC"
+	cat /tmp/MOSBasicRAW-Mac-Page$THEPAGE.json | jq -c '.response.devices[]' >> "$TEMPOUTPUTFILE_MERGEDMAC_JSON"
 
 	#Call our python json to csv routine.  Output will be tab delimited so we can maintain our "tags" together.
-	$PYTHON2USE $BAGCLI_WORKDIR/modules/json2csv.py devices /tmp/MOSBasicRAW-Mac-Page$THEPAGE.txt "$TEMPOUTPUTFILE_MERGEDMAC"
+	# $PYTHON2USE $BAGCLI_WORKDIR/modules/json2csv.py devices /tmp/MOSBasicRAW-Mac-Page$THEPAGE.txt "$TEMPOUTPUTFILE_MERGEDMAC"
 done
 
 # # #Build file of all this data now that we've sorted it out and parsed it.
@@ -156,7 +147,7 @@ fi
 #in an csv style sheet so its easy to use the "cut" command to parse that data.
 if [ ! "$MB_DEBUG" = "Y" ]; then
 	#Unless we are debugging then we need to cleanup after ourselves
-	rm -f /tmp/MOSBasicRAW-Mac-*.txt
+	rm -f /tmp/MOSBasicRAW-Mac-*.json
 else
 	cli_log "MAC CLIENTS-> DEBUG IS ENABLED.  NOT CLEANING UP REMAINING FILES!!!!"
 fi
